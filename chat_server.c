@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#define MAX_CLIENTS	100
+#define MAX_CLIENTS	10
 #define LENGTH_SEND 201
 #define LENGTH_SEND_ALL 2048
 
@@ -88,7 +88,8 @@ void send_message_self(const char *s, int connfd){
 	}
 }
 
-/* Envois un message au client */
+/* SUREMENT A VIRER 
+Envois un message au client */
 void send_message_client(char *s, int id){
 	int i;
 	for(i=0;i<MAX_CLIENTS;i++){
@@ -180,27 +181,31 @@ void *handle_client(void *arg){
 				}else{
 					send_message_self("<<Le nom ne peut etre null\r\n", client->connfd);
 				}
-			}else if(!strcmp(command, "\\PRIVATE")){
-				param = strtok(NULL, " ");
-				if(param){
-					int id = atoi(param);
-					param = strtok(NULL, " ");
-					if(param){
-						sprintf(buff_out, "[PM][%s]", client->name);
-						while(param != NULL){
-							strcat(buff_out, " ");
-							strcat(buff_out, param);
-							param = strtok(NULL, " ");
-						}
-						strcat(buff_out, "\r\n");
-						send_message_client(buff_out, id);
-					}else{
-						send_message_self("<<Le message ne peut etre null\r\n", client->connfd);
-					}
-				}else{
-					send_message_self("<<La reference ne peut etre null\r\n", client->connfd);
-				}
-			}else if(!strcmp(command, "\\LIST")){
+			}else 
+			
+			// if(!strcmp(command, "\\PRIVATE")){
+			// 	param = strtok(NULL, " ");
+			// 	if(param){
+			// 		int id = atoi(param);
+			// 		param = strtok(NULL, " ");
+			// 		if(param){
+			// 			sprintf(buff_out, "[PM][%s]", client->name);
+			// 			while(param != NULL){
+			// 				strcat(buff_out, " ");
+			// 				strcat(buff_out, param);
+			// 				param = strtok(NULL, " ");
+			// 			}
+			// 			strcat(buff_out, "\r\n");
+			// 			send_message_client(buff_out, id);
+			// 		}else{
+			// 			send_message_self("<<Le message ne peut etre null\r\n", client->connfd);
+			// 		}
+			// 	}else{
+			// 		send_message_self("<<La reference ne peut etre null\r\n", client->connfd);
+			// 	}
+			// }else 
+			
+			if(!strcmp(command, "\\LIST")){
 				int i;
 				for( i = 0; i < MAX_CLIENTS; i++)
 				{
@@ -215,7 +220,8 @@ void *handle_client(void *arg){
 				strcat(buff_out, "\\QUIT     Quitte le chatroom\r\n");
 				strcat(buff_out, "\\PING     Interroge le serveur\r\n");
 				strcat(buff_out, "\\RENAME   <name> Change le surnom\r\n");
-				strcat(buff_out, "\\PRIVATE  <id dest> <msg> message prive\r\n");
+				strcat(buff_out, "\\PENDU    Lancer le jeu\r\n");
+				// strcat(buff_out, "\\PRIVATE  <id dest> <msg> message prive\r\n");
 				strcat(buff_out, "\\LIST     liste clients actifs\r\n");
 				send_message_self(buff_out, client->connfd);
 			}else{
