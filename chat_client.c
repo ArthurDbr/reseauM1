@@ -19,7 +19,7 @@ volatile sig_atomic_t flag = 0;
 int sockfd = 0;
 char nickname[LENGTH_NAME] = {};
 
-void catch_ctrl_c_and_exit(int sig) {
+void exit_ctrl_c(int sig) {
     flag = 1;
 }
 
@@ -70,12 +70,12 @@ void send_msg_handler() {
             break;
         }
     }
-    catch_ctrl_c_and_exit(2);
+    exit_ctrl_c(2);
 }
 
 int main()
 {
-    signal(SIGINT, catch_ctrl_c_and_exit);
+    signal(SIGINT, exit_ctrl_c);
 
     // Create socket
     sockfd = socket(AF_INET , SOCK_STREAM , 0);

@@ -17,6 +17,7 @@
 
 static unsigned int cli_count = 0;
 static int id = 10;
+static int isPenduStart = 0;
 
 /* Client structure */
 typedef struct {
@@ -29,7 +30,7 @@ typedef struct {
 client_struct *clients[MAX_CLIENTS];
 
 /* Ajoute le client a la file */
-void add_queue(client_struct *cl){
+void ajouter_client_queue(client_struct *cl){
 	int i;
 	for(i=0;i<MAX_CLIENTS;i++){
 		if(!clients[i]){
@@ -40,7 +41,7 @@ void add_queue(client_struct *cl){
 }
 
 /* Supprime le client de la file */
-void delete_cli_from_queue(int id){
+void supprimer_client_queue(int id){
 	int i;
 	for(i=0;i<MAX_CLIENTS;i++){
 		if(clients[i]){
@@ -53,7 +54,7 @@ void delete_cli_from_queue(int id){
 }
 
 /* Envois un message à tous les clients sauf l'emetteur */
-void send_message(char *s, int id){
+void envoie_mess_client(char *s, int id){
 	int i;
 	for(i=0;i<MAX_CLIENTS;i++){
 		if(clients[i]){
@@ -68,7 +69,7 @@ void send_message(char *s, int id){
 }
 
 /* Envois un message à tous les clients */
-void send_message_all(char *s){
+void envoie_mess_clients(char *s){
 	int i;
 	for(i=0;i<MAX_CLIENTS;i++){
 		if(clients[i]){
@@ -89,7 +90,7 @@ void send_message_self(const char *s, int connfd){
 }
 
 /* SUREMENT A VIRER 
-Envois un message au client */
+Envois un message aux clients */
 void send_message_client(char *s, int id){
 	int i;
 	for(i=0;i<MAX_CLIENTS;i++){
@@ -139,6 +140,7 @@ void print_client_addr(struct sockaddr_in addr){
 void *handle_client(void *arg){
 	char buff_out[2048];
 	char buff_in[1024];
+	char mot[32];
 	int rlen;
 
 	cli_count++;
@@ -149,7 +151,7 @@ void *handle_client(void *arg){
 	printf("id client %d\n", client->id);
 
 	sprintf(buff_out, "<<Client : %s connectee. \n\r", client->name);
-	send_message_all(buff_out);
+	envoie_mess_clients(buff_out);
 
 	/* Recois les donnees du client */
 	while((rlen = read(client->connfd, buff_in, sizeof(buff_in)-1)) > 0){
@@ -161,7 +163,6 @@ void *handle_client(void *arg){
 		if(!strlen(buff_in)){
 			continue;
 		}
-
 		/* Options specials */
 		if(buff_in[0] == '\\'){
 			char *command, *param;
@@ -177,7 +178,7 @@ void *handle_client(void *arg){
 					strcpy(client->name, param);
 					sprintf(buff_out, "<<RENAME, %s EN %s\r\n", old_name, client->name);
 					free(old_name);
-					send_message_all(buff_out);
+					envoie_mess_clients(buff_out);
 				}else{
 					send_message_self("<<Le nom ne peut etre null\r\n", client->connfd);
 				}
@@ -224,23 +225,50 @@ void *handle_client(void *arg){
 				// strcat(buff_out, "\\PRIVATE  <id dest> <msg> message prive\r\n");
 				strcat(buff_out, "\\LIST     liste clients actifs\r\n");
 				send_message_self(buff_out, client->connfd);
-			}else{
+			}else if(!strcmp(command,"\\PENDU")){
+				isPenduStart = 1;
+				envoie_mess_client("<<Le joueur *** a lancé le jeu\r\n", client->connfd);
+				send_message_self("<<Veuillez choisir un mot \r\n", client->connfd);
+			}
+			else{
 				send_message_self("<<commande inconnu\r\n", client->connfd);
 			}
 		}else{
-			/* Envois un message */
-			snprintf(buff_out, sizeof(buff_out), "[%s] %s\r\n", client->name, buff_in);
-			send_message(buff_out, client->id);
+			/*Le pendu est lancé*/
+			if(isPenduStart >= 1){
+				if(isPenduStart == 1){
+					strcpy(mot, buff_in);
+					isPenduStart++;
+					envoie_mess_client("<<Le joueur *** a choisi le mot à vous de jouer !\r\n", client->connfd);
+				}else if(isPenduStart == 2){
+					if(sizeof(buff_in) > 1){
+						send_message_self("<<vous ne pouvez pas dépasser 1 caractère !", client->connfd);
+					}else{
+						for(int i = sizeof(mot); i < sizeof(mot); i++){
+							if(mot[i] == buff_in[0] ){
+								envoie_mess_clients("Une lettre trouvé !");
+							}
+						} 
+					}
+				}
+				
+				
+
+			}else{
+				/* Envois un message */
+				snprintf(buff_out, sizeof(buff_out), "[%s] %s\r\n", client->name, buff_in);
+				envoie_mess_client(buff_out, client->id);	
+			}
 		}
 	}
 
 	/* Ferme les connections */
 	sprintf(buff_out, "<<A plus ! %s\r\n", client->name);
-	send_message_all(buff_out);
+	envoie_mess_clients(buff_out);
 	close(client->connfd);
 
 	/* Supprime un client de la file et supprime le thread */
-	delete_cli_from_queue(client->id);
+	supprimer_client_queue(client->id);
 	printf("<<Aurevoir ");
 	print_client_addr(client->addr);
 	printf(" id client %d\n", client->id);
@@ -302,7 +330,7 @@ int main(int argc, char *argv[]){
 		sprintf(client->name, "%d", client->id);
 
 		/* ajoute le client à la file et fork un thread */
-		add_queue(client);
+		ajouter_client_queue(client);
 		pthread_create(&tid, NULL, &handle_client, (void*)client);
 
 		/* Reduit l'usage du CPU */
