@@ -38,13 +38,15 @@ void str_overwrite_stdout() {
     fflush(stdout);
 }
 
-void recv_msg_handler() {
+void recevoir_message() {
     char receiveMessage[LENGTH_SEND] = {};
     while (1) {
         int receive = recv(sockfd, receiveMessage, LENGTH_SEND, 0);
+        receiveMessage[receive] = '\0';
         if (receive > 0) {
             printf("\r%s", receiveMessage);
             str_overwrite_stdout();
+
         } else if (receive == 0) {
             break;
         } else { 
@@ -53,7 +55,7 @@ void recv_msg_handler() {
     }
 }
 
-void send_msg_handler() {
+void envoyer_message() {
     char message[LENGTH_MSG] = {};
     while (1) {
         str_overwrite_stdout();
@@ -106,18 +108,18 @@ int main()
     getpeername(sockfd, (struct sockaddr*) &server_info, (socklen_t*) &s_addrlen);
     printf("Connecte au serveur: %s:%d\n", inet_ntoa(server_info.sin_addr), ntohs(server_info.sin_port));
     printf("Vous etes : %s:%d\n", inet_ntoa(client_info.sin_addr), ntohs(client_info.sin_port));
-    printf("Entrer '\\HELP' pour voir la liste des fonctionnalités \n");
+    printf("Entrer '\\HELP' pour voir la liste des fonctionnalités \r\n");
 
     send(sockfd, "", LENGTH_NAME, 0);
 
     pthread_t send_msg_thread;
-    if (pthread_create(&send_msg_thread, NULL, (void *) send_msg_handler, NULL) != 0) {
+    if (pthread_create(&send_msg_thread, NULL, (void *) envoyer_message, NULL) != 0) {
         printf ("Echec de la creation du pthread !\n");
         exit(EXIT_FAILURE);
     }
 
     pthread_t recv_msg_thread;
-    if (pthread_create(&recv_msg_thread, NULL, (void *) recv_msg_handler, NULL) != 0) {
+    if (pthread_create(&recv_msg_thread, NULL, (void *) recevoir_message, NULL) != 0) {
         printf ("Echec de la creation du pthread !\n");
         exit(EXIT_FAILURE);
     }

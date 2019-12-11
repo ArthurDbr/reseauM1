@@ -89,8 +89,7 @@ void send_message_self(const char *s, int connfd){
 	}
 }
 
-/* SUREMENT A VIRER 
-Envois un message aux clients */
+/* Envois un message aux clients */
 void send_message_client(char *s, int id){
 	int i;
 	for(i=0;i<MAX_CLIENTS;i++){
@@ -146,9 +145,9 @@ void *handle_client(void *arg){
 	cli_count++;
 	client_struct *client= (client_struct *)arg;
 
-	printf("<<Nouveau client sur ");
+	printf("<<Nouveau client sur \r\n");
 	print_client_addr(client->addr);
-	printf("id client %d\n", client->id);
+	printf("id client %d\r\n", client->id);
 
 	sprintf(buff_out, "<<Client : %s connectee. \n\r", client->name);
 	envoie_mess_clients(buff_out);
@@ -241,18 +240,18 @@ void *handle_client(void *arg){
 					isPenduStart++;
 					envoie_mess_client("<<Le joueur *** a choisi le mot à vous de jouer !\r\n", client->connfd);
 				}else if(isPenduStart == 2){
-					if(sizeof(buff_in) > 1){
-						send_message_self("<<vous ne pouvez pas dépasser 1 caractère !", client->connfd);
+					printf("test : %ld \r\n", sizeof(buff_in));
+					// A exporter dans le client
+					if(sizeof(buff_in) > 4){
+						send_message_self("<<Vous ne pouvez pas dépasser 1 caractère !\r\n", client->connfd);
 					}else{
 						for(int i = sizeof(mot); i < sizeof(mot); i++){
 							if(mot[i] == buff_in[0] ){
-								envoie_mess_clients("Une lettre trouvé !");
+								envoie_mess_clients("Une lettre trouvé !\r\n");
 							}
 						} 
 					}
 				}
-				
-				
 
 			}else{
 				/* Envois un message */
@@ -271,7 +270,7 @@ void *handle_client(void *arg){
 	supprimer_client_queue(client->id);
 	printf("<<Aurevoir ");
 	print_client_addr(client->addr);
-	printf(" id client %d\n", client->id);
+	printf(" id client %d\r\n", client->id);
 	free(client);
 	cli_count--;
 	pthread_detach(pthread_self());
