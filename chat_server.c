@@ -19,6 +19,7 @@ static unsigned int cli_count = 0;
 static int id = 10;
 static int isPenduStart = 0;
 static char mot[255];
+static char motTrouve[255];
 
 /* Client structure */
 typedef struct {
@@ -136,6 +137,13 @@ void print_client_addr(struct sockaddr_in addr){
 		(addr.sin_addr.s_addr & 0xFF000000)>>24);
 }
 
+void init_motTrouve(char mot[]){
+	for(int x = 0; x < strlen(mot); x++){
+		motTrouve[x] = '_';
+	}
+	motTrouve[strlen(mot)-1] = '\n';
+}
+
 /* Gere la communication avec tous les clients */
 void *handle_client(void *arg){
 	char buff_out[2048];
@@ -144,6 +152,7 @@ void *handle_client(void *arg){
 
 	cli_count++;
 	client_struct *client= (client_struct *)arg;
+
 
 	printf("<<Nouveau client sur \r\n");
 	print_client_addr(client->addr);
@@ -181,31 +190,7 @@ void *handle_client(void *arg){
 				}else{
 					send_message_self("<<Le nom ne peut etre null\r\n", client->connfd);
 				}
-			}else 
-			
-			// if(!strcmp(command, "\\PRIVATE")){
-			// 	param = strtok(NULL, " ");
-			// 	if(param){
-			// 		int id = atoi(param);
-			// 		param = strtok(NULL, " ");
-			// 		if(param){
-			// 			sprintf(buff_out, "[PM][%s]", client->name);
-			// 			while(param != NULL){
-			// 				strcat(buff_out, " ");
-			// 				strcat(buff_out, param);
-			// 				param = strtok(NULL, " ");
-			// 			}
-			// 			strcat(buff_out, "\r\n");
-			// 			send_message_client(buff_out, id);
-			// 		}else{
-			// 			send_message_self("<<Le message ne peut etre null\r\n", client->connfd);
-			// 		}
-			// 	}else{
-			// 		send_message_self("<<La reference ne peut etre null\r\n", client->connfd);
-			// 	}
-			// }else 
-			
-			if(!strcmp(command, "\\LIST")){
+			}else if(!strcmp(command, "\\LIST")){
 				for(int i = 0; i < MAX_CLIENTS; i++)
 				{
 					if(clients[i]){
@@ -235,7 +220,11 @@ void *handle_client(void *arg){
 			/*Le pendu est lancé*/
 			if(isPenduStart >= 1){
 				if(isPenduStart == 1){
+
 					strcpy(mot, buff_in);
+					mot[strlen(mot)] = '\n';
+					// Initialise le mot à troue
+					init_motTrouve(mot);
 					isPenduStart++;
 					envoie_mess_client("<<Le joueur *** a choisi le mot à vous de jouer !\r\n", client->connfd);
 					
@@ -244,20 +233,28 @@ void *handle_client(void *arg){
 					if(strlen(buff_in) > 1){
 						send_message_self("<<Vous ne pouvez pas dépasser 1 caractère !\r\n", client->connfd);
 					}else{
-					char motTrouve[strlen(mot)];
-					for(int x = 0; x < strlen(mot); x++){
-						motTrouve[x] = '_';
-					}
-					motTrouve[strlen(mot)] = '\n';
-					printf("%s",motTrouve);
+						// Ajoute une lettre au mot à troue
+						int lettreTrouve = 0;
+
 						for(int x = 0; x < strlen(mot); x++){
 							if(mot[x] == buff_in[0] ){
+								lettreTrouve = 1;
 								motTrouve[x] = mot[x];
 								envoie_mess_client("Une lettre trouvée !\r\n", client->connfd);
 							}	
 						} 
+						if(lettreTrouve == 0){
+							envoie_mess_client("Lettre non présente dans le mot \r\n", client->connfd);
+						}
+						if(strcmp(motTrouve, mot) == 0){
+							envoie_mess_client("mot trouvé ! \r\n", client->connfd);
+							isPenduStart = 3;
+						}
 						envoie_mess_client(motTrouve, client->connfd );
 					}
+				}
+				if(isPenduStart == 3){
+					envoie_mess_client("Le jeu est terminé, vous pouvez le relancer is vous souhaitez !\r\n", client->connfd);
 				}
 
 			}else{
