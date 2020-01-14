@@ -45,11 +45,11 @@ void recevoir_message() {
         int receive = recv(sockfd, receiveMessage, LENGTH_SEND, 0);
         receiveMessage[receive] = '\0';
         if (receive > 0) {
-            if (strcmp(receiveMessage, "/PENDU/") == 0){
-                pendu = 1;
-            }else{
+            // if (strcmp(receiveMessage, "/PENDU/") == 0){
+            //     pendu = 1;
+            // }else{
                 printf("\r%s", receiveMessage);
-            }
+            // }
             str_overwrite_stdout();
 
         } else if (receive == 0) {

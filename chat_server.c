@@ -18,7 +18,7 @@
 static unsigned int cli_count = 0;
 static int id = 10;
 static int isPenduStart = 0;
-static char mot[32];
+static char mot[255];
 
 /* Client structure */
 typedef struct {
@@ -225,7 +225,6 @@ void *handle_client(void *arg){
 				send_message_self(buff_out, client->connfd);
 			}else if(!strcmp(command,"\\PENDU")){
 				isPenduStart = 1;
-				envoie_mess_client("\\PENDU\\ \r\n", client->connfd);
 				envoie_mess_client("<<Le joueur *** a lancé le jeu\r\n", client->connfd);
 				send_message_self("<<Veuillez choisir un mot \r\n", client->connfd);
 			}
@@ -246,12 +245,15 @@ void *handle_client(void *arg){
 						send_message_self("<<Vous ne pouvez pas dépasser 1 caractère !\r\n", client->connfd);
 					}else{
 					char motTrouve[strlen(mot)];
+					for(int x = 0; x < strlen(mot); x++){
+						motTrouve[x] = '_';
+					}
+					motTrouve[strlen(mot)] = '\n';
+					printf("%s",motTrouve);
 						for(int x = 0; x < strlen(mot); x++){
-							strcpy(motTrouve, "____\r\n");
 							if(mot[x] == buff_in[0] ){
 								motTrouve[x] = mot[x];
-								envoie_mess_client(mot, client->connfd);
-								envoie_mess_client("Une lettre trouvé !\r\n", client->connfd);
+								envoie_mess_client("Une lettre trouvée !\r\n", client->connfd);
 							}	
 						} 
 						envoie_mess_client(motTrouve, client->connfd );
