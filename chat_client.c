@@ -18,6 +18,7 @@
 volatile sig_atomic_t flag = 0;
 int sockfd = 0;
 char nickname[LENGTH_NAME] = {};
+int pendu = 0;
 
 void exit_ctrl_c(int sig) {
     flag = 1;
@@ -44,7 +45,11 @@ void recevoir_message() {
         int receive = recv(sockfd, receiveMessage, LENGTH_SEND, 0);
         receiveMessage[receive] = '\0';
         if (receive > 0) {
-            printf("\r%s", receiveMessage);
+            if (strcmp(receiveMessage, "/PENDU/") == 0){
+                pendu = 1;
+            }else{
+                printf("\r%s", receiveMessage);
+            }
             str_overwrite_stdout();
 
         } else if (receive == 0) {
@@ -59,15 +64,31 @@ void envoyer_message() {
     char message[LENGTH_MSG] = {};
     while (1) {
         str_overwrite_stdout();
-        while (fgets(message, LENGTH_MSG, stdin) != NULL) {
-            //str_trim_lf(message, LENGTH_MSG);
-            if (strlen(message) == 0) {
-                str_overwrite_stdout();
-            } else {
-                break;
+        // if(pendu == 1 ){
+        //     do {
+        //         while (fgets(message, LENGTH_MSG, stdin) != NULL) {
+        //             if (strlen(message) == 0) {
+        //                 str_overwrite_stdout();
+        //             } else {
+        //                 break;
+        //             }
+        //         }
+        //         if(strlen(message) > 1){
+        //             printf("Attention 1 seul caractère possible : \n\r");
+        //         }
+        //     }while(strlen(message) > 1);    
+        // }else{
+            while (fgets(message, LENGTH_MSG, stdin) != NULL) {
+                if (strlen(message) == 0) {
+                    str_overwrite_stdout();
+                } else {
+                    break;
+                }
             }
-        }
+        // }
+        
         send(sockfd, message, LENGTH_MSG, 0);
+
         if (strcmp(message, "exit") == 0) {
             break;
         }

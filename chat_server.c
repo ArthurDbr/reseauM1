@@ -18,6 +18,7 @@
 static unsigned int cli_count = 0;
 static int id = 10;
 static int isPenduStart = 0;
+static char mot[32];
 
 /* Client structure */
 typedef struct {
@@ -70,10 +71,10 @@ void envoie_mess_client(char *s, int id){
 
 /* Envois un message à tous les clients */
 void envoie_mess_clients(char *s){
-	int i;
-	for(i=0;i<MAX_CLIENTS;i++){
-		if(clients[i]){
-			if(write(clients[i]->connfd, s, LENGTH_SEND_ALL)<0){
+	int j;
+	for(j=0;j<MAX_CLIENTS;j++){
+		if(clients[j]){
+			if(write(clients[j]->connfd, s, LENGTH_SEND_ALL)<0){
 				perror("write");
 				exit(-1);
 			}
@@ -139,7 +140,6 @@ void print_client_addr(struct sockaddr_in addr){
 void *handle_client(void *arg){
 	char buff_out[2048];
 	char buff_in[1024];
-	char mot[32];
 	int rlen;
 
 	cli_count++;
@@ -206,8 +206,7 @@ void *handle_client(void *arg){
 			// }else 
 			
 			if(!strcmp(command, "\\LIST")){
-				int i;
-				for( i = 0; i < MAX_CLIENTS; i++)
+				for(int i = 0; i < MAX_CLIENTS; i++)
 				{
 					if(clients[i]){
 						sprintf(buff_out, "<<Id : %d Nom : %s\r\n", clients[i]->id, clients[i]->name);
@@ -226,6 +225,7 @@ void *handle_client(void *arg){
 				send_message_self(buff_out, client->connfd);
 			}else if(!strcmp(command,"\\PENDU")){
 				isPenduStart = 1;
+				envoie_mess_client("\\PENDU\\ \r\n", client->connfd);
 				envoie_mess_client("<<Le joueur *** a lancé le jeu\r\n", client->connfd);
 				send_message_self("<<Veuillez choisir un mot \r\n", client->connfd);
 			}
@@ -239,17 +239,22 @@ void *handle_client(void *arg){
 					strcpy(mot, buff_in);
 					isPenduStart++;
 					envoie_mess_client("<<Le joueur *** a choisi le mot à vous de jouer !\r\n", client->connfd);
+					
 				}else if(isPenduStart == 2){
-					printf("test : %ld \r\n", sizeof(buff_in));
-					// A exporter dans le client
-					if(sizeof(buff_in) > 4){
+					// condition A exporter dans le client
+					if(strlen(buff_in) > 1){
 						send_message_self("<<Vous ne pouvez pas dépasser 1 caractère !\r\n", client->connfd);
 					}else{
-						for(int i = sizeof(mot); i < sizeof(mot); i++){
-							if(mot[i] == buff_in[0] ){
-								envoie_mess_clients("Une lettre trouvé !\r\n");
-							}
+					char motTrouve[strlen(mot)];
+						for(int x = 0; x < strlen(mot); x++){
+							strcpy(motTrouve, "____\r\n");
+							if(mot[x] == buff_in[0] ){
+								motTrouve[x] = mot[x];
+								envoie_mess_client(mot, client->connfd);
+								envoie_mess_client("Une lettre trouvé !\r\n", client->connfd);
+							}	
 						} 
+						envoie_mess_client(motTrouve, client->connfd );
 					}
 				}
 
@@ -313,8 +318,8 @@ int main(int argc, char *argv[]){
 
 		/* Regarde si on peut encore accepter des clients */
 		if((cli_count+1) == MAX_CLIENTS){
-			printf("<<CLIENTS MAX ATTEINT\n");
-			printf("<<REJETE ");
+			printf("<<CLIENTS MAX ATTEINT\n\r");
+			printf("<<REJETE \n\r");
 			print_client_addr(cli_addr);
 			printf("\n");
 			close(connfd);
