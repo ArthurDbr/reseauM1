@@ -20,6 +20,9 @@ static int id = 10;
 static int isPenduStart = 0;
 static char mot[255];
 static char motTrouve[255];
+static char chaine[255];
+static int idJoueurLanceurJeu = -1;
+static int nbCoupsRestant = 15;
 
 /* Client structure */
 typedef struct {
@@ -84,7 +87,7 @@ void envoie_mess_clients(char *s){
 }
 
 /* Envois un message à l'emetteur */
-void send_message_self(const char *s, int connfd){
+void envoie_message_a_soi_meme(const char *s, int connfd){
 	if(write(connfd, s, strlen(s))<0){
 		perror("write");
 		exit(-1);
@@ -113,7 +116,7 @@ void send_active_clients(int connfd){
 	for(i=0;i<MAX_CLIENTS;i++){
 		if(clients[i]){
 			sprintf(s, "<<CLIENT %d | %s\r\n", clients[i]->id, clients[i]->name);
-			send_message_self(s, connfd);
+			envoie_message_a_soi_meme(s, connfd);
 		}
 	}
 }
@@ -178,7 +181,7 @@ void *handle_client(void *arg){
 			if(!strcmp(command, "\\QUIT")){
 				break;
 			}else if(!strcmp(command, "\\PING")){
-				send_message_self("<<PONG\r\n", client->connfd);
+				envoie_message_a_soi_meme("<<PONG\r\n", client->connfd);
 			}else if(!strcmp(command, "\\RENAME")){
 				param = strtok(NULL, " ");
 				if(param){
@@ -188,14 +191,14 @@ void *handle_client(void *arg){
 					free(old_name);
 					envoie_mess_clients(buff_out);
 				}else{
-					send_message_self("<<Le nom ne peut etre null\r\n", client->connfd);
+					envoie_message_a_soi_meme("<<Le nom ne peut etre null\r\n", client->connfd);
 				}
 			}else if(!strcmp(command, "\\LIST")){
 				for(int i = 0; i < MAX_CLIENTS; i++)
 				{
 					if(clients[i]){
 						sprintf(buff_out, "<<Id : %d Nom : %s\r\n", clients[i]->id, clients[i]->name);
-						send_message_self(buff_out, client->connfd);
+						envoie_message_a_soi_meme(buff_out, client->connfd);
 					}
 				}
 				strcat(buff_out, "\r\n");
@@ -207,14 +210,18 @@ void *handle_client(void *arg){
 				strcat(buff_out, "\\PENDU    Lancer le jeu\r\n");
 				// strcat(buff_out, "\\PRIVATE  <id dest> <msg> message prive\r\n");
 				strcat(buff_out, "\\LIST     liste clients actifs\r\n");
-				send_message_self(buff_out, client->connfd);
+				envoie_message_a_soi_meme(buff_out, client->connfd);
 			}else if(!strcmp(command,"\\PENDU")){
+				strcat(chaine, "<<Le joueur ");
+				strcat(chaine, client->name);
+				strcat(chaine," a lancé le jeu \r\n" );
+				idJoueurLanceurJeu = client->id;
+				envoie_mess_client(chaine, client->id);
+				envoie_message_a_soi_meme("<<Veuillez choisir un mot \r\n", client->connfd);
 				isPenduStart = 1;
-				envoie_mess_client("<<Le joueur *** a lancé le jeu\r\n", client->connfd);
-				send_message_self("<<Veuillez choisir un mot \r\n", client->connfd);
 			}
 			else{
-				send_message_self("<<commande inconnu\r\n", client->connfd);
+				envoie_message_a_soi_meme("<<commande inconnu \r\n", client->connfd);
 			}
 		}else{
 			/*Le pendu est lancé*/
@@ -226,31 +233,60 @@ void *handle_client(void *arg){
 					// Initialise le mot à troue
 					init_motTrouve(mot);
 					isPenduStart++;
-					envoie_mess_client("<<Le joueur *** a choisi le mot à vous de jouer !\r\n", client->connfd);
+					memset (chaine, 0, sizeof (chaine));
+					strcat(chaine, "<<Le joueur ");
+					strcat(chaine, client->name);
+					
+					strcat(chaine," a choisi le mot à vous de jouer ! Coups restant : " );
+					sprintf(chaine, "%s%d",chaine, nbCoupsRestant);
+					strcat(chaine, "\r\n");
+					envoie_mess_client(chaine, client->id);
 					
 				}else if(isPenduStart == 2){
 					// condition A exporter dans le client
 					if(strlen(buff_in) > 1){
-						send_message_self("<<Vous ne pouvez pas dépasser 1 caractère !\r\n", client->connfd);
+						envoie_message_a_soi_meme("<<Vous ne pouvez pas dépasser 1 caractère !\r\n", client->connfd);
 					}else{
-						// Ajoute une lettre au mot à troue
-						int lettreTrouve = 0;
+						// Regarde si ce n'est pas le lanceur du jeu qui joue
+						if(idJoueurLanceurJeu != client->id){
+							// Ajoute une lettre au mot à troue
+							int lettreTrouve = 0;
+							nbCoupsRestant--;
+							for(int x = 0; x < strlen(mot); x++){
+								if(mot[x] == buff_in[0] ){
+									lettreTrouve = 1;
+									motTrouve[x] = mot[x];
+									
+									memset (chaine, 0, sizeof (chaine));
+									strcat(chaine, "Lettre : ");
+									strncat(chaine, &buff_in[0], 1);
+									strcat(chaine, " trouvée \r\n");
+									envoie_mess_client(chaine, client->connfd);
+								}	
+							} 
+							if(lettreTrouve == 0){
+								memset (chaine, 0, sizeof (chaine));
+								strcat(chaine, "La lettre : ");
+								strncat(chaine, &buff_in[0], 1);
+								strcat(chaine, " n'est pas présente dans le mot \r\n");
+								send_message_client(chaine, client->id);
+							}
+							memset (chaine, 0, sizeof (chaine));
+							strcat(chaine, "Coups restant : ");
+							sprintf(chaine, "%s%d",chaine, nbCoupsRestant);
+							strcat(chaine, "\r\n");
+							envoie_mess_client(chaine, client->connfd);
+							if(strcmp(motTrouve, mot) == 0){
+								envoie_mess_client("mot trouvé ! Vous pouvez relancer une partie \r\n", client->connfd);
+								isPenduStart = 0;
+								idJoueurLanceurJeu = -1;
+								nbCoupsRestant = 15;
+							}
+							envoie_mess_client(motTrouve, client->connfd );
+						}else{
+							envoie_message_a_soi_meme("Veuillez attendre que les autres aient trouvés votre mot ! \r\n", client->connfd);
+						}
 
-						for(int x = 0; x < strlen(mot); x++){
-							if(mot[x] == buff_in[0] ){
-								lettreTrouve = 1;
-								motTrouve[x] = mot[x];
-								envoie_mess_client("Une lettre trouvée !\r\n", client->connfd);
-							}	
-						} 
-						if(lettreTrouve == 0){
-							envoie_mess_client("Lettre non présente dans le mot \r\n", client->connfd);
-						}
-						if(strcmp(motTrouve, mot) == 0){
-							envoie_mess_client("mot trouvé ! \r\n", client->connfd);
-							isPenduStart = 3;
-						}
-						envoie_mess_client(motTrouve, client->connfd );
 					}
 				}
 				if(isPenduStart == 3){
