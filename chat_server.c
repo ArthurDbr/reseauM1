@@ -78,7 +78,7 @@ void envoie_mess_clients(char *s){
 	int j;
 	for(j=0;j<MAX_CLIENTS;j++){
 		if(clients[j]){
-			if(write(clients[j]->connfd, s, LENGTH_SEND_ALL)<0){
+			if(write(clients[j]->connfd, s, LENGTH_SEND)<0){
 				perror("write");
 				exit(-1);
 			}
@@ -109,17 +109,6 @@ void send_message_client(char *s, int id){
 	}
 }
 
-/* Envois un message a la liste de clients actifs */
-void send_active_clients(int connfd){
-	int i;
-	char s[64];
-	for(i=0;i<MAX_CLIENTS;i++){
-		if(clients[i]){
-			sprintf(s, "<<CLIENT %d | %s\r\n", clients[i]->id, clients[i]->name);
-			envoie_message_a_soi_meme(s, connfd);
-		}
-	}
-}
 
 /* Enleve les retour chariot */
 void strip_newline(char *s){
@@ -132,7 +121,7 @@ void strip_newline(char *s){
 }
 
 /* Affiche l'adresse ip */
-void print_client_addr(struct sockaddr_in addr){
+void affiche_client_addr(struct sockaddr_in addr){
 	printf("%d.%d.%d.%d\n",
 		addr.sin_addr.s_addr & 0xFF,
 		(addr.sin_addr.s_addr & 0xFF00)>>8,
@@ -158,7 +147,7 @@ void *handle_client(void *arg){
 
 
 	printf("<<Nouveau client sur \r\n");
-	print_client_addr(client->addr);
+	affiche_client_addr(client->addr);
 	printf("id client %d\r\n", client->id);
 
 	sprintf(buff_out, "<<Client : %s connectee. \n\r", client->name);
@@ -249,7 +238,9 @@ void *handle_client(void *arg){
 					}else{
 						// Regarde si ce n'est pas le lanceur du jeu qui joue
 						if(idJoueurLanceurJeu != client->id){
-							// Ajoute une lettre au mot à troue
+							// Test si on a encore des coups à jouer
+							if(nbCoupsRestant >= 0){
+								// Ajoute une lettre au mot à troue
 							int lettreTrouve = 0;
 							nbCoupsRestant--;
 							for(int x = 0; x < strlen(mot); x++){
@@ -261,7 +252,7 @@ void *handle_client(void *arg){
 									strcat(chaine, "Lettre : ");
 									strncat(chaine, &buff_in[0], 1);
 									strcat(chaine, " trouvée \r\n");
-									envoie_mess_client(chaine, client->connfd);
+									envoie_mess_clients(chaine);
 								}	
 							} 
 							if(lettreTrouve == 0){
@@ -269,20 +260,27 @@ void *handle_client(void *arg){
 								strcat(chaine, "La lettre : ");
 								strncat(chaine, &buff_in[0], 1);
 								strcat(chaine, " n'est pas présente dans le mot \r\n");
-								send_message_client(chaine, client->id);
+								envoie_mess_clients(chaine);
 							}
 							memset (chaine, 0, sizeof (chaine));
 							strcat(chaine, "Coups restant : ");
 							sprintf(chaine, "%s%d",chaine, nbCoupsRestant);
 							strcat(chaine, "\r\n");
-							envoie_mess_client(chaine, client->connfd);
+							envoie_mess_clients(chaine);
 							if(strcmp(motTrouve, mot) == 0){
-								envoie_mess_client("mot trouvé ! Vous pouvez relancer une partie \r\n", client->connfd);
+								envoie_mess_clients("mot trouvé ! Vous pouvez relancer une partie \r\n");
 								isPenduStart = 0;
 								idJoueurLanceurJeu = -1;
 								nbCoupsRestant = 15;
 							}
-							envoie_mess_client(motTrouve, client->connfd );
+							envoie_mess_clients(motTrouve );
+							}else{
+								isPenduStart = 0;
+								idJoueurLanceurJeu = -1;
+								nbCoupsRestant = 15;
+								envoie_mess_clients("Partie perdue ! \n\r");
+							}
+							
 						}else{
 							envoie_message_a_soi_meme("Veuillez attendre que les autres aient trouvés votre mot ! \r\n", client->connfd);
 						}
@@ -309,7 +307,7 @@ void *handle_client(void *arg){
 	/* Supprime un client de la file et supprime le thread */
 	supprimer_client_queue(client->id);
 	printf("<<Aurevoir ");
-	print_client_addr(client->addr);
+	affiche_client_addr(client->addr);
 	printf(" id client %d\r\n", client->id);
 	free(client);
 	cli_count--;
@@ -355,7 +353,7 @@ int main(int argc, char *argv[]){
 		if((cli_count+1) == MAX_CLIENTS){
 			printf("<<CLIENTS MAX ATTEINT\n\r");
 			printf("<<REJETE \n\r");
-			print_client_addr(cli_addr);
+			affiche_client_addr(cli_addr);
 			printf("\n");
 			close(connfd);
 			continue;
