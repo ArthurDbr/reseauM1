@@ -54,8 +54,8 @@ void recevoir_message() {
 
         } else if (receive == 0) {
             break;
-        } else { 
-            // -1 
+        } else {
+            // -1
         }
     }
 }
@@ -76,7 +76,7 @@ void envoyer_message() {
         //         if(strlen(message) > 1){
         //             printf("Attention 1 seul caractère possible : \n\r");
         //         }
-        //     }while(strlen(message) > 1);    
+        //     }while(strlen(message) > 1);
         // }else{
             while (fgets(message, LENGTH_MSG, stdin) != NULL) {
                 if (strlen(message) == 0) {
@@ -86,7 +86,7 @@ void envoyer_message() {
                 }
             }
         // }
-        
+
         send(sockfd, message, LENGTH_MSG, 0);
 
         if (strcmp(message, "exit") == 0) {
@@ -114,7 +114,7 @@ int main()
     memset(&server_info, 0, s_addrlen);
     memset(&client_info, 0, c_addrlen);
     server_info.sin_family = PF_INET;
-    server_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_info.sin_addr.s_addr = inet_addr("172.16.135.16");
     server_info.sin_port = htons(5000);
 
     // Connect to Server
@@ -123,7 +123,7 @@ int main()
         printf("Echec de la connexion au Serveur!\n");
         exit(EXIT_FAILURE);
     }
-    
+
     // Names
     getsockname(sockfd, (struct sockaddr*) &client_info, (socklen_t*) &c_addrlen);
     getpeername(sockfd, (struct sockaddr*) &server_info, (socklen_t*) &s_addrlen);

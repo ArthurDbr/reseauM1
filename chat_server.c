@@ -225,12 +225,12 @@ void *handle_client(void *arg){
 					memset (chaine, 0, sizeof (chaine));
 					strcat(chaine, "<<Le joueur ");
 					strcat(chaine, client->name);
-					
+
 					strcat(chaine," a choisi le mot à vous de jouer ! Coups restant : " );
 					sprintf(chaine, "%s%d",chaine, nbCoupsRestant);
 					strcat(chaine, "\r\n");
 					envoie_mess_client(chaine, client->id);
-					
+
 				}else if(isPenduStart == 2){
 					// condition A exporter dans le client
 					if(strlen(buff_in) > 1){
@@ -247,14 +247,14 @@ void *handle_client(void *arg){
 								if(mot[x] == buff_in[0] ){
 									lettreTrouve = 1;
 									motTrouve[x] = mot[x];
-									
+
 									memset (chaine, 0, sizeof (chaine));
 									strcat(chaine, "Lettre : ");
 									strncat(chaine, &buff_in[0], 1);
 									strcat(chaine, " trouvée \r\n");
 									envoie_mess_clients(chaine);
-								}	
-							} 
+								}
+							}
 							if(lettreTrouve == 0){
 								memset (chaine, 0, sizeof (chaine));
 								strcat(chaine, "La lettre : ");
@@ -272,6 +272,7 @@ void *handle_client(void *arg){
 								isPenduStart = 0;
 								idJoueurLanceurJeu = -1;
 								nbCoupsRestant = 15;
+								memset (chaine, 0, sizeof (chaine));
 							}
 							envoie_mess_clients(motTrouve );
 							}else{
@@ -279,8 +280,9 @@ void *handle_client(void *arg){
 								idJoueurLanceurJeu = -1;
 								nbCoupsRestant = 15;
 								envoie_mess_clients("Partie perdue ! \n\r");
+								memset (chaine, 0, sizeof (chaine));
 							}
-							
+
 						}else{
 							envoie_message_a_soi_meme("Veuillez attendre que les autres aient trouvés votre mot ! \r\n", client->connfd);
 						}
@@ -294,7 +296,7 @@ void *handle_client(void *arg){
 			}else{
 				/* Envois un message */
 				snprintf(buff_out, sizeof(buff_out), "[%s] %s\r\n", client->name, buff_in);
-				envoie_mess_client(buff_out, client->id);	
+				envoie_mess_client(buff_out, client->id);
 			}
 		}
 	}
